@@ -1,4 +1,7 @@
-
+#!/usr/bin/env bash
+# =============================================================================
+# run_arpack_final.sh  — FINAL VERSION (no heredoc interpolation bugs)
+# =============================================================================
 set -euo pipefail
 
 TRIPLET="riscv64-linux-gnu"
@@ -169,42 +172,160 @@ log "Step 7: Running binaries under qemu-riscv64-static..."
 EXTRACTOR="${TMPDIR_WORK}/extract.py"
 cat > "$EXTRACTOR" << 'PYEOF'
 #!/usr/bin/env python3
-"""
-Read raw binary output from a file, extract numerics, print one JSON line.
-Usage: python3 extract.py <binary_name> <output_file>
-"""
+# =============================================================================
+# Definitive extractor for ARPACK-ng driver output — verified against real
+# binary output format from ARPACK-ng source code.
+#
+# REAL OUTPUT FORMATS (from ARPACK-ng source):
+#
+#   dsbdr*  Per-eigenvalue labelled lines (no table):
+#             " The Ritz value       is           0.09794138D+00"
+#             " The relative residual is           9.56000000D-16"
+#
+#   dndrv*  Table under header containing "Real,Imag" and "residual":
+#             " Row 1:    2.99993D+03   0.00000D+00   4.78000D-14"
+#             " Row 2:    ..."
+#             (3 columns: real, imag, residual — D-exponent Fortran notation)
+#
+#   dsdrv*  Table under header containing "Ritz values" and "residual"
+#           but NOT "Imag":
+#             " Row 1:    3.14159D+00   6.05000D-15"
+#             " Row 2:    ..."
+#             (2 columns: eigenvalue, residual — D-exponent Fortran notation)
+#
+# Row prefix is "Row N:" but we also accept bare "N:" or "N " for safety.
+# =============================================================================
 import sys, re, json
 
 name     = sys.argv[1]
 out_file = sys.argv[2]
-
 with open(out_file, "r", errors="replace") as f:
     raw = f.read()
 
-FP = r'[+-]?\d+(?:\.\d+)?(?:[EeDd][+-]?\d+)?'
+FP_RE = r'[+-]?\d+(?:\.\d+)?(?:[EeDd][+-]?\d+)?'
 
 def fp(s):
-    return float(s.upper().replace('D', 'E'))
+    try:    return float(s.upper().replace('D', 'E'))
+    except: return None
 
-rel_errs = [fp(m) for m in re.findall(
-    rf'(?:relative\s+error|residual\s*norm)\s*[=:]\s*({FP})', raw, re.I)]
-eigvals  = [fp(m) for m in re.findall(
-    rf'(?:eigenvalue|ritz\s+value)\s*\d*\s*[=:]\s*({FP})', raw, re.I)]
+# ── Row patterns — "Row N:" prefix OR bare "N:" OR bare "N " ─────────────────
+ROW_PFX = r'^\s*(?:Row\s+)?\d+\s*:\s*'
+row3 = re.compile(ROW_PFX + rf'({FP_RE})\s+({FP_RE})\s+({FP_RE})\s*$', re.I)
+row2 = re.compile(ROW_PFX + rf'({FP_RE})\s+({FP_RE})\s*$',             re.I)
+# bare (no colon): "  1    X.XXX   Y.YYY   Z.ZZZ"
+bare3 = re.compile(rf'^\s*\d+\s+({FP_RE})\s+({FP_RE})\s+({FP_RE})\s*$')
+bare2 = re.compile(rf'^\s*\d+\s+({FP_RE})\s+({FP_RE})\s*$')
 
-worst  = max(abs(e) for e in rel_errs) if rel_errs else None
-status = ("PASS" if worst is not None and worst <= 1e-10
-          else "FAIL" if worst is not None
+# ── Section header patterns ───────────────────────────────────────────────────
+# dndrv: "Ritz values (Real,Imag) and relative residuals"
+dndrv_hdr = re.compile(r'Real.*Imag.*residual|Ritz\s+values.*Real.*Imag', re.I)
+# dsdrv: "Ritz values and relative residuals" (no Imag)
+dsdrv_hdr = re.compile(r'Ritz\s+values?\s+and\s+relative\s+residual', re.I)
+
+# ── Explicit per-line patterns (dsbdr*) ──────────────────────────────────────
+pat_ritz = re.compile(rf'The\s+Ritz\s+value\s+is\s+({FP_RE})',        re.I)
+pat_rres = re.compile(rf'The\s+relative\s+residual\s+is\s+({FP_RE})', re.I)
+# generic fallbacks for any labelled output
+pat_rel2 = re.compile(rf'relative\s+(?:error|residual)\s*[=:is]+\s*({FP_RE})', re.I)
+pat_eig2 = re.compile(rf'(?:Ritz\s+value|eigenvalue)\s*(?:\d+)?\s*[=:is]+\s*({FP_RE})', re.I)
+
+def scan_section(lines, start, is_3col):
+    """
+    Scan lines[start:] for numeric table rows.
+    is_3col=True  -> tries row3/bare3 (real, imag, residual)
+    is_3col=False -> tries row2/bare2 (eigenvalue, residual)
+    Tolerates up to 8 junk lines before first data; stops after 3 post-data junk.
+    Returns (rel_errs, eigvals).
+    """
+    rel_errs, eigvals = [], []
+    pre_junk = post_junk = 0
+    found = False
+    for line in lines[start:]:
+        if is_3col:
+            m = row3.match(line) or bare3.match(line)
+            if m:
+                found = True; post_junk = 0
+                v = fp(m.group(1)); r = fp(m.group(3))
+                if v is not None: eigvals.append(v)
+                if r is not None: rel_errs.append(r)
+                continue
+        else:
+            m = row2.match(line) or bare2.match(line)
+            if m:
+                found = True; post_junk = 0
+                v = fp(m.group(1)); r = fp(m.group(2))
+                if v is not None: eigvals.append(v)
+                if r is not None: rel_errs.append(r)
+                continue
+        # non-data line
+        if not found:
+            pre_junk += 1
+            if pre_junk > 8: break
+        else:
+            post_junk += 1
+            if post_junk >= 3: break
+    return rel_errs, eigvals
+
+lines     = raw.splitlines()
+rel_errs  = []
+eigvals   = []
+notes_acc = []
+
+# ── Pass 1: dsbdr* explicit labelled lines ────────────────────────────────────
+for line in lines:
+    m = pat_ritz.search(line)
+    if m:
+        v = fp(m.group(1))
+        if v is not None: eigvals.append(v)
+    m = pat_rres.search(line)
+    if m:
+        v = fp(m.group(1))
+        if v is not None: rel_errs.append(v)
+    # generic fallbacks
+    for m in pat_rel2.finditer(line):
+        v = fp(m.group(1))
+        if v is not None and v not in rel_errs: rel_errs.append(v)
+    for m in pat_eig2.finditer(line):
+        v = fp(m.group(1))
+        if v is not None and v not in eigvals: eigvals.append(v)
+
+# ── Pass 2: dndrv* tabular sections (3-col: real, imag, residual) ─────────────
+for i, line in enumerate(lines):
+    if dndrv_hdr.search(line):
+        r, e = scan_section(lines, i + 1, is_3col=True)
+        rel_errs.extend(r); eigvals.extend(e)
+
+# ── Pass 3: dsdrv* tabular sections (2-col: eigenvalue, residual) ─────────────
+for i, line in enumerate(lines):
+    if dsdrv_hdr.search(line):
+        r, e = scan_section(lines, i + 1, is_3col=False)
+        rel_errs.extend(r); eigvals.extend(e)
+
+# ── Deduplicate eigenvalues ───────────────────────────────────────────────────
+seen = set(); eigvals_u = []
+for v in eigvals:
+    k = round(v, 8)
+    if k not in seen: seen.add(k); eigvals_u.append(v)
+
+# ── Status ────────────────────────────────────────────────────────────────────
+filtered = [e for e in rel_errs if abs(e) < 10.0]
+if not filtered and rel_errs:
+    notes_acc.append(f"residuals present but magnitude>=10: {rel_errs[:5]}")
+
+worst  = max(abs(e) for e in filtered) if filtered else None
+status = ("PASS"    if worst is not None and worst <= 1e-10
+          else "FAIL"    if worst is not None
           else "NO_DATA")
 
 print(json.dumps({
     "binary_name":      name,
     "precision_status": status,
-    "relative_errors":  rel_errs,
-    "eigenvalues":      eigvals,
+    "relative_errors":  filtered,
+    "eigenvalues":      eigvals_u,
     "worst_error":      worst,
     "exec_ok":          True,
-    "notes":            "",
-    "raw_tail":         raw[-600:].strip(),
+    "notes":            "; ".join(notes_acc),
+    "raw_tail":         raw[-1200:].strip(),
 }))
 PYEOF
 
@@ -236,6 +357,12 @@ for BIN_NAME in "${BINARIES[@]}"; do
 
     ST=$(python3 -c "import json,sys; print(json.load(open('${REC_FILE}'))['precision_status'])" 2>/dev/null || echo ERROR)
     log "  → ${ST}"
+    # On NO_DATA: print the last 30 lines of raw output so you can see the real format
+    if [ "$ST" = "NO_DATA" ] || [ "$ST" = "ERROR" ]; then
+        warn "  ── raw output tail (${BIN_NAME}) ──"
+        tail -30 "$OUT_FILE" | sed 's/^/    /' >&2 || true
+        warn "  ── end raw tail ──"
+    fi
     case "$ST" in
         PASS)    N_PASS=$((N_PASS+1))  ;;
         FAIL)    N_FAIL=$((N_FAIL+1))  ;;

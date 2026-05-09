@@ -1,0 +1,8 @@
+# ARPACK-ng upstream source — needed locally, hidden from GitHub view
+arpack-ng/
+_build_riscv64/
+*.o
+*.a
+*.so
+*.pyc
+__pycache__/

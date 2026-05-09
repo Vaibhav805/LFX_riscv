@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "project": "LFX Mentorship \u2013 RISC-V High Precision Code Base",
+    "mentee_org": "IIT Jodhpur",
+    "target_arch": "riscv64",
+    "host_os": "Ubuntu 24.04 (Noble)",
+    "compiler": "GCC 13.x cross (riscv64-linux-gnu)",
+    "toolchain_note": "CMAKE_SYSROOT omitted; cross-gcc has built-in sysroot"
+  },
+  "sysroot_gcc": "/usr/lib/gcc-cross/riscv64-linux-gnu/13",
+  "audit_summary": {
+    "total": 15,
+    "PASS": 0,
+    "FAIL": 0,
+    "ERROR": 0,
+    "NO_DATA": 15
+  },
+  "binary_results": [
+    {
+      "binary_name": "dsdrv1",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "w   1:    1.96054D+01   1.82483D-14\n  Row   2:    4.82193D+01   8.63707D-15\n  Row   3:    4.82193D+01   7.42307D-15\n  Row   4:    7.68333D+01   4.58099D-15\n  \n  \n  _SDRV1 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           10\n  What portion of the spectrum: SM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is           30\n  The number of OP*x is          160\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dsdrv2",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "w   1:    9.86881D+00   4.88358D-13\n  Row   2:    3.94657D+01   1.98252D-13\n  Row   3:    8.87620D+01   8.48250D-14\n  Row   4:    1.57710D+02   1.02192D-13\n  \n  \n  _SDRV2 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           10\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is            4\n  The number of OP*x is           24\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dsdrv3",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "w   1:    1.21003D+05   1.02310D-16\n  Row   2:    1.21617D+05   2.98104D-16\n  Row   3:    1.22057D+05   2.30049D-16\n  Row   4:    1.22323D+05   1.34100D-16\n  \n  \n  _SDRV3 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           10\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is           56\n  The number of OP*x is          304\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dsdrv4",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "w   1:    9.87040D+00   5.55346D-14\n  Row   2:    3.94912D+01   1.23270D-14\n  Row   3:    8.88909D+01   7.89176D-15\n  Row   4:    1.58117D+02   9.04530D-15\n  \n  \n  _SDRV4 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           10\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is            4\n  The number of OP*x is           24\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dsdrv5",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "Row   1:    9.87040D+00   6.45252D-14\n  Row   2:    3.94912D+01   3.05222D-14\n  Row   3:    8.88909D+01   2.73248D-14\n  Row   4:    1.58117D+02   2.84299D-14\n  \n  \n  _SDRV5 \n  ====== \n  \n  Size of the matrix is         100\n  The number of Ritz values requested is           4\n  The number of Arnoldi vectors generated (NCV) is           10\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is           4\n  The number of OP*x is           24\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dsdrv6",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "Row   1:    8.88909D+01   4.80948D-14\n  Row   2:    1.58117D+02   4.63103D-15\n  Row   3:    2.47238D+02   5.70744D-15\n  Row   4:    3.56338D+02   8.02909D-15\n  \n  \n  _SDRV6 \n  ====== \n  \n  Size of the matrix is         100\n  The number of Ritz values requested is           4\n  The number of Arnoldi vectors generated (NCV) is           20\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is           2\n  The number of OP*x is           34\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dsbdr1",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "s            4\n  The number of Lanczos vectors generated (NCV) is           10\n  The number of converged Ritz values is            4\n  What portion of the spectrum LM\n  The number of Implicit Arnoldi update taken is           29\n  The number of OP*x is          146\n  The convergence tolerance is    1.1102230246251565E-016\n  \n\n Ritz values and relative residuals\n ----------------------------------\n               Col   1       Col   2\n  Row   1:    8.91167D+02   8.36319D-16\n  Row   2:    9.19781D+02   5.00907D-16\n  Row   3:    9.19781D+02   6.68948D-16\n  Row   4:    9.48395D+02   1.19786D-15"
+    },
+    {
+      "binary_name": "dsbdr2",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "s            4\n  The number of Lanczos vectors generated (NCV) is           10\n  The number of converged Ritz values is            4\n  What portion of the spectrum LM\n  The number of Implicit Arnoldi update taken is            7\n  The number of OP*x is           39\n  The convergence tolerance is    1.1102230246251565E-016\n  \n\n Ritz values and relative residuals\n ----------------------------------\n               Col   1       Col   2\n  Row   1:    1.96054D+01   8.56199D-15\n  Row   2:    4.82193D+01   3.94482D-15\n  Row   3:    4.82193D+01   4.29959D-15\n  Row   4:    7.68333D+01   3.76590D-15"
+    },
+    {
+      "binary_name": "dsbdr3",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "s            4\n  The number of Lanczos vectors generated (NCV) is           10\n  The number of converged Ritz values is            4\n  What portion of the spectrum LM\n  The number of Implicit Arnoldi update taken is           56\n  The number of OP*x is          304\n  The convergence tolerance is    1.1102230246251565E-016\n  \n\n Ritz values and relative residuals\n ----------------------------------\n               Col   1       Col   2\n  Row   1:    1.21003D+05   9.74173D-17\n  Row   2:    1.21617D+05   1.69428D-16\n  Row   3:    1.22057D+05   3.29173D-16\n  Row   4:    1.22323D+05   1.50441D-16"
+    },
+    {
+      "binary_name": "dsbdr4",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "s            4\n  The number of Lanczos vectors generated (NCV) is           10\n  The number of converged Ritz values is            4\n  What portion of the spectrum LM\n  The number of Implicit Arnoldi update taken is            4\n  The number of OP*x is           24\n  The convergence tolerance is    1.1102230246251565E-016\n  \n\n Ritz values and relative residuals\n ----------------------------------\n               Col   1       Col   2\n  Row   1:    9.87040D+00   4.42282D-14\n  Row   2:    3.94912D+01   1.52573D-14\n  Row   3:    8.88909D+01   8.60167D-15\n  Row   4:    1.58117D+02   8.16690D-15"
+    },
+    {
+      "binary_name": "dsbdr5",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "s            4\n  The number of Lanczos vectors generated (NCV) is           10\n  The number of converged Ritz values is            4\n  What portion of the spectrum LM\n  The number of Implicit Arnoldi update taken is            4\n  The number of OP*x is           24\n  The convergence tolerance is    1.1102230246251565E-016\n  \n\n Ritz values and relative residuals\n ----------------------------------\n               Col   1       Col   2\n  Row   1:    9.87040D+00   6.78049D-14\n  Row   2:    3.94912D+01   3.63563D-14\n  Row   3:    8.88909D+01   2.77733D-14\n  Row   4:    1.58117D+02   4.26933D-14"
+    },
+    {
+      "binary_name": "dndrv1",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "2:    7.68333D+01   0.00000D+00   6.93981D-15\n  Row   3:    4.82193D+01   0.00000D+00   8.57200D-15\n  Row   4:    4.82193D+01   0.00000D+00   5.64290D-15\n  \n  \n  _NDRV1 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           20\n  What portion of the spectrum: SM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is            9\n  The number of OP*x is          139\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dndrv2",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "2:    9.65571D-01   0.00000D+00   4.86919D-16\n  Row   3:    1.07381D+00   0.00000D+00   8.48731D-16\n  Row   4:    9.12926D-01   0.00000D+00   1.40277D-15\n  \n  \n  _NDRV2 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           20\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is            2\n  The number of OP*x is           35\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dndrv3",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "2:    2.03388D+04   0.00000D+00   9.56494D-16\n  Row   3:    2.02653D+04   0.00000D+00   7.78076D-16\n  Row   4:    2.01631D+04   0.00000D+00   4.65419D-16\n  \n  \n  _NDRV3 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           20\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is           14\n  The number of OP*x is          221\n  The convergence criterion is    1.1102230246251565E-016"
+    },
+    {
+      "binary_name": "dndrv4",
+      "precision_status": "NO_DATA",
+      "relative_errors": [],
+      "eigenvalues": [],
+      "worst_error": null,
+      "exec_ok": true,
+      "notes": "",
+      "raw_tail": "2:    6.44479D+01   0.00000D+00   1.19968D-14\n  Row   3:    1.13787D+02   0.00000D+00   6.26111D-15\n  Row   4:    1.82929D+02   0.00000D+00   3.47665D-15\n  \n  \n  _NDRV4 \n  ====== \n  \n  Size of the matrix is          100\n  The number of Ritz values requested is            4\n  The number of Arnoldi vectors generated (NCV) is           10\n  What portion of the spectrum: LM\n  The number of converged Ritz values is            4\n  The number of Implicit Arnoldi update iterations taken is            5\n  The number of OP*x is           27\n  The convergence criterion is    1.1102230246251565E-016"
+    }
+  ]
+}

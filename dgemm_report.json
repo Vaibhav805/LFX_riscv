@@ -1,0 +1,20 @@
+{
+  "openblas_config": "OpenBLAS 0.3.26 NO_AFFINITY RISCV64_GENERIC SINGLE_THREADED",
+  "threshold": 1.000000e-10,
+  "results": [
+    {"case": "square_small", "M": 4, "N": 4, "K": 4, "alpha": 1, "beta": 0, "relative_error": 8.004763e-17, "max_abs_error": 5.551115e-17, "status": "PASS"},
+    {"case": "square_medium", "M": 64, "N": 64, "K": 64, "alpha": 1, "beta": 0, "relative_error": 2.178401e-16, "max_abs_error": 3.552714e-15, "status": "PASS"},
+    {"case": "square_large", "M": 256, "N": 256, "K": 256, "alpha": 1, "beta": 0, "relative_error": 5.464650e-16, "max_abs_error": 2.842171e-14, "status": "PASS"},
+    {"case": "square_xl", "M": 512, "N": 512, "K": 512, "alpha": 1, "beta": 0, "relative_error": 8.016484e-16, "max_abs_error": 7.460699e-14, "status": "PASS"},
+    {"case": "rect_tall", "M": 256, "N": 64, "K": 128, "alpha": 1, "beta": 0, "relative_error": 4.088001e-16, "max_abs_error": 1.421085e-14, "status": "PASS"},
+    {"case": "rect_wide", "M": 64, "N": 256, "K": 128, "alpha": 1, "beta": 0, "relative_error": 4.051144e-16, "max_abs_error": 1.243450e-14, "status": "PASS"},
+    {"case": "alpha_beta", "M": 64, "N": 64, "K": 64, "alpha": 2.5, "beta": 0.5, "relative_error": 2.320094e-16, "max_abs_error": 8.881784e-15, "status": "PASS"},
+    {"case": "transA", "M": 64, "N": 64, "K": 64, "alpha": 1, "beta": 0, "relative_error": 0.000000e+00, "max_abs_error": 0.000000e+00, "status": "PASS"},
+    {"case": "transB", "M": 64, "N": 64, "K": 64, "alpha": 1, "beta": 0, "relative_error": 0.000000e+00, "max_abs_error": 0.000000e+00, "status": "PASS"},
+    {"case": "transAB", "M": 64, "N": 64, "K": 64, "alpha": 1, "beta": 0, "relative_error": 0.000000e+00, "max_abs_error": 0.000000e+00, "status": "PASS"},
+    {"case": "skinny_K", "M": 128, "N": 128, "K": 4, "alpha": 1, "beta": 0, "relative_error": 9.827990e-17, "max_abs_error": 5.551115e-16, "status": "PASS"},
+    {"case": "fat_K", "M": 4, "N": 4, "K": 512, "alpha": 1, "beta": 0, "relative_error": 7.425131e-16, "max_abs_error": 1.421085e-14, "status": "PASS"},
+    {"case": "non_power2", "M": 37, "N": 41, "K": 53, "alpha": 1, "beta": 0, "relative_error": 2.103582e-16, "max_abs_error": 2.664535e-15, "status": "PASS"}
+  ],
+  "summary": {"pass": 13, "fail": 0, "worst_rel_error": 8.016484e-16, "worst_case": "square_xl"}
+}

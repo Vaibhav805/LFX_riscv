@@ -1,0 +1,12 @@
+{
+  "binary_name": "dgemm_validate_riscv",
+  "duration_sec": 30,
+  "yield_per_sec": 0.0,
+  "futex_count": 0,
+  "yield_count": 0,
+  "mmap_count": 0,
+  "thrash_ratio": 0.0,
+  "thread_verdict": "HEALTHY",
+  "recommendation": "Thread synchronization looks healthy. Ratio is within normal range.",
+  "raw_syscounts": {}
+}

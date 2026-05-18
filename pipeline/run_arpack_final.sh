@@ -16,9 +16,7 @@ REAL_USER="${SUDO_USER:-$USER}"
 TMPDIR_WORK="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_WORK"' EXIT
 
-BINARIES=(dsbdr1 dsbdr2 dsbdr3 dsbdr4 dsbdr5
-          dndrv1 dndrv2 dndrv3 dndrv4
-          dsdrv1 dsdrv2 dsdrv3 dsdrv4 dsdrv5 dsdrv6)
+BINARIES=(bug_1323 bug_142 bug_142_gen bug_58_double bug_79_double_complex dnsimp dgemm_validate_riscv)
 
 log()  { echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO]  $*"; }
 warn() { echo "$(date '+%Y-%m-%d %H:%M:%S') [WARN]  $*" >&2; }
@@ -61,7 +59,7 @@ SOURCES
             -e '/^deb.*archive\.ubuntu\.com/s/^deb /deb [arch=amd64,i386] /' \
             "$F" 2>/dev/null || true
     done
-    dpkg --add-architecture riscv64 2>/dev/null || true
+    sudo dpkg --add-architecture riscv64 2>/dev/null || true
     apt-get update -q 2>&1 | grep -E "^(Err:|E:)" | grep -v "antigravity\|GPG\|pubkey" || true
     log "  apt sources configured."
 else
@@ -70,7 +68,7 @@ fi
 
 # ── Step 2: Install cross libs ────────────────────────────────────────────────
 log "Step 2: Installing riscv64 cross libraries..."
-apt-get install -y --no-install-recommends \
+sudo apt-get install -y --no-install-recommends \
     libc6:riscv64 libc6-dev:riscv64 \
     libgfortran5:riscv64 \
     libblas3:riscv64 libblas-dev:riscv64 \
@@ -90,7 +88,7 @@ if [ -d "$SYSROOT_GCC" ]; then
         LINK="${NAMES[0]}"; CANDS=("${NAMES[@]:1}")
         REAL=$(find_lib "${CANDS[@]}")
         if [ -n "$REAL" ]; then
-            ln -sf "$REAL" "${SYSROOT_GCC}/${LINK}"
+            sudo ln -sf "$REAL" "${SYSROOT_GCC}/${LINK}"
             log "  ${LINK} → ${REAL}"
         fi
     done
@@ -138,7 +136,7 @@ done
 LFLAGS="${LFLAGS# }"  # trim leading space
 
 CMAKE_ARGS=(
-    cmake "$SOURCE_DIR"
+    cmake "/home/vaibhav/Documents/LFX_Selection_Work/arpack-ng"
     "-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN}"
     "-DBUILD_SHARED_LIBS=OFF"
     "-DEXAMPLES=ON"
@@ -369,6 +367,19 @@ for BIN_NAME in "${BINARIES[@]}"; do
         NO_DATA) N_ND=$((N_ND+1))      ;;
         *)       N_ERR=$((N_ERR+1))    ;;
     esac
+done
+# In run_arpack_final.sh, find the execution loop and ensure it handles dgemm:
+for bin in "${BINARIES[@]}"; do
+    echo "Running $bin ..."
+    if [ "$bin" == "dgemm_validate_riscv" ]; then
+        qemu-riscv64-static \
+            -L /usr/riscv64-linux-gnu \
+            ./$bin dgemm_report.json
+    else
+        qemu-riscv64-static \
+            -L /usr/riscv64-linux-gnu \
+            ./$bin
+    fi
 done
 
 # ── Step 8: Assemble and write final JSON ─────────────────────────────────────

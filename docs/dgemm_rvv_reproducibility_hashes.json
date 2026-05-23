@@ -1,0 +1,50 @@
+{
+  "binary": "tests/dgemm_rvv",
+  "runs": 10,
+  "deterministic": true,
+  "unique_hashes": [
+    "cdf6295e231338f0f8fa86ee410e3f62"
+  ],
+  "records": [
+    {
+      "run": 1,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 2,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 3,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 4,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 5,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 6,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 7,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 8,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 9,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    },
+    {
+      "run": 10,
+      "hash": "cdf6295e231338f0f8fa86ee410e3f62"
+    }
+  ]
+}

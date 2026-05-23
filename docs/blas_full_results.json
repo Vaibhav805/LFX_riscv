@@ -1,0 +1,18 @@
+{
+  "openblas_config":"OpenBLAS 0.3.26 NO_AFFINITY RISCV64_GENERIC SINGLE_THREADED",
+  "threshold":1.00000000000000004e-10,
+  "results":[
+    {"level":"L1","operation":"DAXPY","relative_error":0.00000000000000000e+00,"max_abs_error":0.00000000000000000e+00,"status":"PASS"},
+    {"level":"L1","operation":"DDOT","relative_error":1.12359374784332972e-15,"max_abs_error":8.88178419700125232e-15,"status":"PASS"},
+    {"level":"L1","operation":"DNRM2","relative_error":7.78608734021334700e-16,"max_abs_error":2.84217094304040074e-14,"status":"PASS"},
+    {"level":"L1","operation":"DSCAL","relative_error":0.00000000000000000e+00,"max_abs_error":0.00000000000000000e+00,"status":"PASS"},
+    {"level":"L1","operation":"DCOPY","relative_error":0.00000000000000000e+00,"max_abs_error":0.00000000000000000e+00,"status":"PASS"},
+    {"level":"L1","operation":"DASUM","relative_error":5.57186016725352510e-16,"max_abs_error":1.13686837721616030e-12,"status":"PASS"},
+    {"level":"L1","operation":"IDAMAX","relative_error":0.00000000000000000e+00,"max_abs_error":0.00000000000000000e+00,"status":"PASS"},
+    {"level":"L2","operation":"DGEMV","relative_error":4.93637519101172697e-16,"max_abs_error":1.06581410364015028e-14,"status":"PASS"},
+    {"level":"L2","operation":"DSYMV","relative_error":7.25911404583932808e-16,"max_abs_error":1.15463194561016280e-14,"status":"PASS"},
+    {"level":"L2","operation":"DTRMV","relative_error":4.36477949870748906e-16,"max_abs_error":9.76996261670137756e-15,"status":"PASS"},
+    {"level":"L2","operation":"DGER","relative_error":0.00000000000000000e+00,"max_abs_error":0.00000000000000000e+00,"status":"PASS"}
+  ],
+  "summary":{"pass":11,"fail":0,"worst_rel_error":1.12359374784332972e-15,"worst_case":"DDOT"}
+}

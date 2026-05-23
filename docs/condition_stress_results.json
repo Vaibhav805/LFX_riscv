@@ -1,0 +1,12 @@
+{
+  "openblas_config":"OpenBLAS 0.3.26 NO_AFFINITY RISCV64_GENERIC SINGLE_THREADED",
+  "threshold":9.99999999999999980e-13,
+  "results":[
+    {"case":"hilbert_4","n":4,"condition_estimate":1.60000000000000000e+04,"relative_error":6.27989361283051513e-17,"max_abs_error":6.63049861928912920e-17,"status":"PASS"},
+    {"case":"hilbert_6","n":6,"condition_estimate":1.50000000000000000e+07,"relative_error":7.78924809109306140e-17,"max_abs_error":7.71869340929870707e-17,"status":"PASS"},
+    {"case":"hilbert_8","n":8,"condition_estimate":1.50000000000000000e+10,"relative_error":9.33897524112590722e-17,"max_abs_error":7.78661379936340762e-17,"status":"PASS"},
+    {"case":"hilbert_10","n":10,"condition_estimate":1.60000000000000000e+13,"relative_error":1.03950817840939872e-16,"max_abs_error":1.21343531663305795e-16,"status":"PASS"},
+    {"case":"hilbert_12","n":12,"condition_estimate":1.60000000000000000e+16,"relative_error":1.36335228335852372e-16,"max_abs_error":1.57163289671420967e-16,"status":"PASS"}
+  ],
+  "summary":{"pass":5,"fail":0,"worst_rel_error":1.36335228335852372e-16,"worst_case":"hilbert_12"}
+}

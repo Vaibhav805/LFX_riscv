@@ -1,31 +1,20 @@
 /*
  * dgemm_validate.c
- * ==========================================
- * Validates riscv64 OpenBLAS cblas_dgemm output against an
- * x86 "Golden Reference" to maintain 1e-16 relative error threshold.
  *
- * Build (x86 golden reference):
- *   gcc -O2 -o dgemm_validate_x86 dgemm_validate.c -lopenblas -lm
- *
- * Build (riscv64 cross-compiled):
- *   riscv64-linux-gnu-gcc-13 -O2 -march=rv64gcv -mabi=lp64d \
- *     -o dgemm_validate_riscv dgemm_validate.c \
- *     -L/path/to/riscv64/lib -lopenblas -lm
- *
- * Run on riscv64:
- *   qemu-riscv64-static -L /usr/riscv64-linux-gnu ./dgemm_validate_riscv
+ * Validates cblas_dgemm against a deterministic scalar C reference and writes
+ * a JSON report. The reference path supports all transpose combinations so the
+ * RVV/scalar comparison can stress real DGEMM behavior, not just NN kernels.
  */
 
+#include <cblas.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <string.h>
-#include <time.h>
-#include <cblas.h>
 
-/* openblas_get_config() is declared in openblas/config.h on some installs
- * and in cblas.h on others. Declare it explicitly to avoid implicit-decl
- * warnings on systems where it is not in the included header. */
+#define THRESHOLD 1e-10
+#define SEED 42
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,60 +23,6 @@ extern char *openblas_get_config(void);
 }
 #endif
 
-/* ── Configuration ─────────────────────────────────────────────────────────── */
-#define MAX_DIM        512      /* maximum matrix dimension tested              */
-#define THRESHOLD      1e-10   /* relative error pass threshold                */
-#define STRICT_THRESH  1e-14   /* strict threshold for small well-conditioned  */
-#define SEED           42
-
-/* ── Utilities ─────────────────────────────────────────────────────────────── */
-static void fill_random(double *A, int n, unsigned int *seed) {
-    for (int i = 0; i < n; i++)
-        A[i] = ((double)rand_r(seed) / RAND_MAX) * 2.0 - 1.0;
-}
-
-static double relative_error(const double *C_ref, const double *C_test, int n) {
-    double num = 0.0, den = 0.0;
-    for (int i = 0; i < n; i++) {
-        double diff = C_ref[i] - C_test[i];
-        num += diff * diff;
-        den += C_ref[i] * C_ref[i];
-    }
-    return (den > 0.0) ? sqrt(num / den) : sqrt(num);
-}
-
-static double max_abs_error(const double *C_ref, const double *C_test, int n) {
-    double max_err = 0.0;
-    for (int i = 0; i < n; i++) {
-        double err = fabs(C_ref[i] - C_test[i]);
-        if (err > max_err) max_err = err;
-    }
-    return max_err;
-}
-
-/* ── Golden Reference: naive O(n³) dgemm ──────────────────────────────────── */
-/*
- * C = alpha*A*B + beta*C  (row-major, no transpose)
- * This is the "ground truth" — no SIMD, no reordering, no approximation.
- * Any numerical difference between this and cblas_dgemm is the error we measure.
- */
-static void dgemm_reference(int M, int N, int K,
-                              double alpha,
-                              const double *A, int lda,
-                              const double *B, int ldb,
-                              double beta,
-                              double *C, int ldc) {
-    for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++) {
-            double sum = 0.0;
-            for (int k = 0; k < K; k++)
-                sum += A[i*lda + k] * B[k*ldb + j];
-            C[i*ldc + j] = alpha * sum + beta * C[i*ldc + j];
-        }
-    }
-}
-
-/* ── Test Cases ────────────────────────────────────────────────────────────── */
 typedef struct {
     const char *name;
     int M, N, K;
@@ -96,163 +31,213 @@ typedef struct {
 } TestCase;
 
 static TestCase CASES[] = {
-    /* name,              M,   N,   K,  alpha,  beta, transA,       transB       */
-    { "square_small",     4,   4,   4,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "square_medium",   64,  64,  64,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "square_large",   256, 256, 256,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "square_xl",      512, 512, 512,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "rect_tall",      256,  64, 128,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "rect_wide",       64, 256, 128,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "alpha_beta",      64,  64,  64,  2.5,   0.5,  CblasNoTrans, CblasNoTrans },
-    { "transA",          64,  64,  64,  1.0,   0.0,  CblasTrans,   CblasNoTrans },
-    { "transB",          64,  64,  64,  1.0,   0.0,  CblasNoTrans, CblasTrans   },
-    { "transAB",         64,  64,  64,  1.0,   0.0,  CblasTrans,   CblasTrans   },
-    { "skinny_K",       128, 128,   4,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "fat_K",            4,   4, 512,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-    { "non_power2",      37,  41,  53,  1.0,   0.0,  CblasNoTrans, CblasNoTrans },
-};
-static const int N_CASES = sizeof(CASES) / sizeof(CASES[0]);
+    /* Tiny matrices: scalar fallback baseline */
+    { "tiny_1x1",         1,    1,    1,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "tiny_2x2",         2,    2,    2,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "tiny_3x3",         3,    3,    3,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "tiny_4x4",         4,    4,    4,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
 
-/* ── JSON output ───────────────────────────────────────────────────────────── */
-static void write_json_report(const char *results_json, int n_results) {
-    /* Called from main after all results collected */
-    (void)results_json; (void)n_results; /* stub — see main() */
+    /* Power-of-2 sweep: full vector pipeline */
+    { "pow2_8",           8,    8,    8,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_16",         16,   16,   16,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_32",         32,   32,   32,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_64",         64,   64,   64,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_128",       128,  128,  128,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_256",       256,  256,  256,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_512",       512,  512,  512,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "pow2_1024",     1024, 1024, 1024,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+
+    /* Non-power-of-2: tail stress */
+    { "npo2_37",         37,   37,   37,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_41x53",      41,   53,   41,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_99",         99,   99,   99,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_127",       127,  127,  127,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_255",       255,  255,  255,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_333",       333,  333,  333,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_500",       500,  500,  500,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_777",       777,  777,  777,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "npo2_999",       999,  999,  999,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+
+    /* Extreme rectangles */
+    { "rect_1x1000",      1, 1000, 1000,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "rect_1000x1",   1000,    1, 1000,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "rect_tall",      512,   64,  256,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "rect_wide",       64,  512,  256,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+
+    /* Accumulation stress: large K tests FP rounding */
+    { "acc_K2048",       64,   64, 2048,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "acc_K4096",       32,   32, 4096,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+
+    /* Alpha/Beta variants */
+    { "ab_zero_beta",    64,   64,   64,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "ab_one_one",      64,   64,   64,  1.0,  1.0, CblasNoTrans, CblasNoTrans },
+    { "ab_neg_alpha",    64,   64,   64, -1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "ab_pi_alpha",     64,   64,   64,  3.14159, 0.0, CblasNoTrans, CblasNoTrans },
+    { "ab_neg_beta",     64,   64,   64,  1.0, -1.0, CblasNoTrans, CblasNoTrans },
+    { "ab_half",         64,   64,   64,  0.5,  0.5, CblasNoTrans, CblasNoTrans },
+    { "ab_both_neg",     64,   64,   64, -2.5, -0.5, CblasNoTrans, CblasNoTrans },
+
+    /* Transpose combinations */
+    { "transNN_64",      64,   64,   64,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "transTN_64",      64,   64,   64,  1.0,  0.0, CblasTrans,   CblasNoTrans },
+    { "transNT_64",      64,   64,   64,  1.0,  0.0, CblasNoTrans, CblasTrans   },
+    { "transTT_64",      64,   64,   64,  1.0,  0.0, CblasTrans,   CblasTrans   },
+    { "transTN_255",    255,  255,  255,  1.0,  0.0, CblasTrans,   CblasNoTrans },
+    { "transNT_333",    333,  333,  333,  1.0,  0.0, CblasNoTrans, CblasTrans   },
+    { "transNN_255",    255,  255,  255,  1.0,  0.0, CblasNoTrans, CblasNoTrans },
+    { "transTT_333",    333,  333,  333,  1.0,  0.0, CblasTrans,   CblasTrans   },
+};
+
+static const int N_CASES = (int)(sizeof(CASES) / sizeof(CASES[0]));
+
+static void fill_random(double *x, size_t n, unsigned int *seed) {
+    for (size_t i = 0; i < n; i++) {
+        x[i] = ((double)rand_r(seed) / (double)RAND_MAX) * 2.0 - 1.0;
+    }
 }
 
-/* ── Main ──────────────────────────────────────────────────────────────────── */
-int main(int argc, char *argv[]) {
-    const char *report_path = (argc > 1) ? argv[1] : "dgemm_report.json";
-    unsigned int seed = SEED;
-    int total_pass = 0, total_fail = 0;
-    double worst_rel_error = 0.0;
-    const char *worst_case = NULL;
+static double a_at(const double *A, int lda, CBLAS_TRANSPOSE trans, int i, int k) {
+    return trans == CblasNoTrans ? A[i * lda + k] : A[k * lda + i];
+}
 
-    /* Safe config string */
+static double b_at(const double *B, int ldb, CBLAS_TRANSPOSE trans, int k, int j) {
+    return trans == CblasNoTrans ? B[k * ldb + j] : B[j * ldb + k];
+}
+
+static void dgemm_reference(const TestCase *t, const double *A, int lda,
+                            const double *B, int ldb, double *C, int ldc) {
+    for (int i = 0; i < t->M; i++) {
+        for (int j = 0; j < t->N; j++) {
+            double sum = 0.0;
+            for (int k = 0; k < t->K; k++) {
+                sum += a_at(A, lda, t->transA, i, k) * b_at(B, ldb, t->transB, k, j);
+            }
+            C[i * ldc + j] = t->alpha * sum + t->beta * C[i * ldc + j];
+        }
+    }
+}
+
+static double relative_error(const double *ref, const double *got, size_t n) {
+    double num = 0.0;
+    double den = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        double diff = ref[i] - got[i];
+        num += diff * diff;
+        den += ref[i] * ref[i];
+    }
+    return den > 0.0 ? sqrt(num / den) : sqrt(num);
+}
+
+static double max_abs_error(const double *ref, const double *got, size_t n) {
+    double err = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        double cur = fabs(ref[i] - got[i]);
+        if (cur > err) err = cur;
+    }
+    return err;
+}
+
+static const char *trans_name(CBLAS_TRANSPOSE trans) {
+    return trans == CblasNoTrans ? "N" : "T";
+}
+
+static void json_escape_string(FILE *f, const char *s) {
+    for (; *s; s++) {
+        if (*s == '"' || *s == '\\') fputc('\\', f);
+        fputc(*s, f);
+    }
+}
+
+int main(int argc, char **argv) {
+    const char *report_path = argc > 1 ? argv[1] : "dgemm_report.json";
     const char *cfg = openblas_get_config();
-    if (!cfg) cfg = "OpenBLAS (config unavailable)";
+    if (!cfg) cfg = "OpenBLAS config unavailable";
 
-    printf("\n");
-    printf("=================================================================\n");
-    printf("  cblas_dgemm Numerical Validation -- riscv64 vs Golden Ref\n");
-    printf("  OpenBLAS: %s\n", cfg);
-    printf("  Threshold: %.0e (relative)\n", THRESHOLD);
-    printf("=================================================================\n\n");
-
-    /* JSON buffer */
     FILE *jf = fopen(report_path, "w");
-    if (!jf) { perror("fopen report"); return 1; }
-    fprintf(jf, "{\n  \"openblas_config\": \"%s\",\n  \"threshold\": %e,\n  \"results\": [\n",
-            cfg, THRESHOLD);
+    if (!jf) {
+        perror("fopen report");
+        return 1;
+    }
 
-    for (int tc = 0; tc < N_CASES; tc++) {
-        const TestCase *t = &CASES[tc];
-        int M = t->M, N = t->N, K = t->K;
-        int sizeA = M * K, sizeB = K * N, sizeC = M * N;
+    printf("DGEMM validation: %d cases, threshold %.0e\n", N_CASES, THRESHOLD);
+    printf("OpenBLAS: %s\n", cfg);
 
-        double *A      = malloc(sizeA * sizeof(double));
-        double *B      = malloc(sizeB * sizeof(double));
-        double *C_ref  = malloc(sizeC * sizeof(double));
+    fprintf(jf, "{\n  \"openblas_config\": \"");
+    json_escape_string(jf, cfg);
+    fprintf(jf, "\",\n  \"threshold\": %.17e,\n  \"case_count\": %d,\n  \"results\": [\n",
+            THRESHOLD, N_CASES);
+
+    unsigned int seed = SEED;
+    int pass = 0;
+    int fail = 0;
+    double worst_rel = 0.0;
+    const char *worst_case = "none";
+
+    for (int idx = 0; idx < N_CASES; idx++) {
+        const TestCase *t = &CASES[idx];
+        int lda = t->transA == CblasNoTrans ? t->K : t->M;
+        int ldb = t->transB == CblasNoTrans ? t->N : t->K;
+        size_t sizeA = (size_t)(t->transA == CblasNoTrans ? t->M : t->K) * (size_t)lda;
+        size_t sizeB = (size_t)(t->transB == CblasNoTrans ? t->K : t->N) * (size_t)ldb;
+        size_t sizeC = (size_t)t->M * (size_t)t->N;
+
+        double *A = malloc(sizeA * sizeof(double));
+        double *B = malloc(sizeB * sizeof(double));
+        double *C_ref = malloc(sizeC * sizeof(double));
         double *C_blas = malloc(sizeC * sizeof(double));
         double *C_init = malloc(sizeC * sizeof(double));
-
         if (!A || !B || !C_ref || !C_blas || !C_init) {
-            fprintf(stderr, "OOM for case %s\n", t->name);
+            fprintf(stderr, "OOM in %s\n", t->name);
+            fclose(jf);
             return 1;
         }
 
-        /* Fill with reproducible random data */
-        fill_random(A,      sizeA, &seed);
-        fill_random(B,      sizeB, &seed);
+        fill_random(A, sizeA, &seed);
+        fill_random(B, sizeB, &seed);
         fill_random(C_init, sizeC, &seed);
-        memcpy(C_ref,  C_init, sizeC * sizeof(double));
+        memcpy(C_ref, C_init, sizeC * sizeof(double));
         memcpy(C_blas, C_init, sizeC * sizeof(double));
 
-        /* ── Golden reference (naive triple loop) ── */
-        /* For transpose cases, we need to handle the matrix dims correctly */
-        int A_rows = (t->transA == CblasNoTrans) ? M : K;
-        int A_cols = (t->transA == CblasNoTrans) ? K : M;
-        int B_rows = (t->transB == CblasNoTrans) ? K : N;
-        int B_cols = (t->transB == CblasNoTrans) ? N : K;
-        (void)A_rows; (void)A_cols; (void)B_rows; (void)B_cols;
+        dgemm_reference(t, A, lda, B, ldb, C_ref, t->N);
+        cblas_dgemm(CblasRowMajor, t->transA, t->transB,
+                    t->M, t->N, t->K, t->alpha, A, lda, B, ldb,
+                    t->beta, C_blas, t->N);
 
-        /* Naive reference only for NoTrans cases (transpose handled by cblas) */
-        if (t->transA == CblasNoTrans && t->transB == CblasNoTrans) {
-            dgemm_reference(M, N, K,
-                            t->alpha, A, K, B, N,
-                            t->beta,  C_ref, N);
-        }
-
-        /* ── cblas_dgemm (OpenBLAS, RVV-accelerated on riscv64) ── */
-        cblas_dgemm(CblasRowMajor,
-                    t->transA, t->transB,
-                    M, N, K,
-                    t->alpha, A, (t->transA == CblasNoTrans) ? K : M,
-                              B, (t->transB == CblasNoTrans) ? N : K,
-                    t->beta,  C_blas, N);
-
-        /* ── Compare ── */
-        double rel_err = 0.0, max_err = 0.0;
-        int status_pass;
-
-        if (t->transA == CblasNoTrans && t->transB == CblasNoTrans) {
-            /* Full validation against naive reference */
-            rel_err  = relative_error(C_ref, C_blas, sizeC);
-            max_err  = max_abs_error(C_ref,  C_blas, sizeC);
-            status_pass = (rel_err <= THRESHOLD);
-        } else {
-            /*
-             * For transpose cases: validate self-consistency.
-             * C_ref and C_blas both used cblas — compare two runs with
-             * different alpha/beta to detect non-determinism.
-             * A true cross-arch comparison requires the golden file approach
-             * (see Section 4 of the strategy doc).
-             */
-            rel_err = 0.0; max_err = 0.0;
-            status_pass = 1; /* marked as SELF-CONSISTENT */
-        }
-
-        if (rel_err > worst_rel_error) {
-            worst_rel_error = rel_err;
+        double rel = relative_error(C_ref, C_blas, sizeC);
+        double max_abs = max_abs_error(C_ref, C_blas, sizeC);
+        int ok = rel <= THRESHOLD;
+        if (ok) pass++; else fail++;
+        if (rel > worst_rel) {
+            worst_rel = rel;
             worst_case = t->name;
         }
-        if (status_pass) total_pass++; else total_fail++;
 
-        /* ── Print result ── */
-        printf("  %-20s  %4dx%4dx%4d  rel_err=%.4e  max_err=%.4e  [%s]\n",
-               t->name, M, N, K,
-               rel_err, max_err,
-               status_pass ? "PASS" : "FAIL");
+        printf("  %-16s %4dx%4dx%4d %s%s rel=%.4e max=%.4e [%s]\n",
+               t->name, t->M, t->N, t->K, trans_name(t->transA),
+               trans_name(t->transB), rel, max_abs, ok ? "PASS" : "FAIL");
 
-        /* ── Write JSON entry ── */
         fprintf(jf,
-            "    {\"case\": \"%s\", \"M\": %d, \"N\": %d, \"K\": %d, "
-            "\"alpha\": %g, \"beta\": %g, "
-            "\"relative_error\": %.6e, \"max_abs_error\": %.6e, "
-            "\"status\": \"%s\"}%s\n",
-            t->name, M, N, K, t->alpha, t->beta,
-            rel_err, max_err,
-            status_pass ? "PASS" : "FAIL",
-            (tc < N_CASES - 1) ? "," : "");
+                "    {\"case\":\"%s\",\"M\":%d,\"N\":%d,\"K\":%d,"
+                "\"alpha\":%.17g,\"beta\":%.17g,\"transA\":\"%s\",\"transB\":\"%s\","
+                "\"relative_error\":%.17e,\"max_abs_error\":%.17e,\"status\":\"%s\"}%s\n",
+                t->name, t->M, t->N, t->K, t->alpha, t->beta,
+                trans_name(t->transA), trans_name(t->transB), rel, max_abs,
+                ok ? "PASS" : "FAIL", idx + 1 == N_CASES ? "" : ",");
 
-        free(A); free(B); free(C_ref); free(C_blas); free(C_init);
+        free(A);
+        free(B);
+        free(C_ref);
+        free(C_blas);
+        free(C_init);
     }
 
-    /* ── Summary ── */
-    fprintf(jf, "  ],\n");
-    fprintf(jf, "  \"summary\": {\"pass\": %d, \"fail\": %d, \"worst_rel_error\": %.6e, \"worst_case\": \"%s\"}\n",
-            total_pass, total_fail, worst_rel_error, worst_case ? worst_case : "none");
-    fprintf(jf, "}\n");
+    fprintf(jf,
+            "  ],\n  \"summary\":{\"pass\":%d,\"fail\":%d,"
+            "\"worst_rel_error\":%.17e,\"worst_case\":\"%s\"}\n}\n",
+            pass, fail, worst_rel, worst_case);
     fclose(jf);
 
-    printf("\n");
-    printf("══════════════════════════════════════════════════\n");
-    printf("  PASS: %d  FAIL: %d\n", total_pass, total_fail);
-    printf("  Worst relative error: %.4e  (%s)\n", worst_rel_error,
-           worst_case ? worst_case : "none");
-    printf("  Threshold: %.0e\n", THRESHOLD);
-    printf("  Status: %s\n", (total_fail == 0) ? "ALL PASS" : "FAILURES DETECTED");
-    printf("  Report: %s\n", report_path);
-    printf("══════════════════════════════════════════════════\n\n");
-
-    return (total_fail > 0) ? 1 : 0;
+    printf("Summary: PASS=%d FAIL=%d worst=%.4e (%s), report=%s\n",
+           pass, fail, worst_rel, worst_case, report_path);
+    return fail == 0 ? 0 : 1;
 }

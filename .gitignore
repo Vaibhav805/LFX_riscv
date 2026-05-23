@@ -1,6 +1,23 @@
 # ARPACK-ng upstream source — needed locally, hidden from GitHub view
 arpack-ng/
+lapack-3.12.0/
+OpenBLAS/
 _build_riscv64/
+openblas_rvv_install/
+openblas_scalar_install/
+openblas_riscv64_install/
+openblas-deb/
+external/
+build_logs/
+tests/dgemm_scalar
+tests/dgemm_rvv
+tests/blas_full_scalar
+tests/blas_full_rvv
+tests/condition_stress
+tests/lapack_validate
+reports/*.deb
+*.tgz
+*.tar.gz
 *.o
 *.a
 *.so

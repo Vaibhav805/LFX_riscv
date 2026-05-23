@@ -1,0 +1,7 @@
+{
+  "results": [
+    {"routine":"dgesv","info":0,"max_abs_error":0.00000000000000000e+00,"status":"PASS"},
+    {"routine":"dgels","info":0,"max_abs_error":1.99840144432528177e-15,"status":"PASS"}
+  ],
+  "summary":{"pass":2,"fail":0}
+}
